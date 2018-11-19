@@ -17,8 +17,9 @@
 
 using namespace std;
 
-
-const string db_path = "../../../db/db.xml";
+// Relative path to external files (assuming exe is in ./cmake-build-debug/demo1/server)
+const string db_path    = "../../../db/db.xml";
+const string cert_path  = "../../../ssl_certs/mycert.pem";
 
 
 /**
@@ -92,11 +93,10 @@ static bool get_response_for_user(const string & dbpath, const string & user, co
 }
 
 // Create the SSL socket and initialize the socket address structure
-int OpenListener(int port) {
-    int sd = -1;
+static int OpenListener(int port) {
     struct sockaddr_in addr = {0};
 
-    sd = socket(PF_INET, SOCK_STREAM, 0);
+    int sd = socket(PF_INET, SOCK_STREAM, 0);
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -115,7 +115,7 @@ int OpenListener(int port) {
     return sd;
 }
 
-int isRoot() {
+static int isRoot() {
     if (getuid() != 0) {
         return 0;
     } else {
@@ -123,7 +123,7 @@ int isRoot() {
     }
 }
 
-SSL_CTX *InitServerCTX() {
+static SSL_CTX *InitServerCTX() {
     SSL_METHOD *method;
     SSL_CTX *ctx;
     OpenSSL_add_all_algorithms();  /* load & register all cryptos, etc. */
@@ -137,7 +137,7 @@ SSL_CTX *InitServerCTX() {
     return ctx;
 }
 
-void LoadCertificates(SSL_CTX *ctx, const char *CertFile, const char *KeyFile) {
+static void LoadCertificates(SSL_CTX *ctx, const char *CertFile, const char *KeyFile) {
 /* set the local certificate from CertFile */
     if (SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
@@ -155,7 +155,7 @@ void LoadCertificates(SSL_CTX *ctx, const char *CertFile, const char *KeyFile) {
     }
 }
 
-void ShowCerts(SSL *ssl) {
+static void ShowCerts(SSL *ssl) {
     X509 *cert;
     char *line;
     cert = SSL_get_peer_certificate(ssl); /* Get certificates (if available) */
@@ -179,7 +179,7 @@ void ShowCerts(SSL *ssl) {
  * @param value
  * @return Returns true if the element was found and sets value to its content.
  */
-bool getTextFromElement(xmlNodePtr node, const char * tag, string & value) {
+static bool getTextFromElement(xmlNodePtr node, const char * tag, string & value) {
     xmlNodePtr thisNode = node;
 
     while (thisNode) {
@@ -193,7 +193,7 @@ bool getTextFromElement(xmlNodePtr node, const char * tag, string & value) {
     return false;
 }
 
-bool parse_request_xml(const char * xmlBuf, string & name, string & password) {
+static bool parse_request_xml(const char * xmlBuf, string & name, string & password) {
     bool bRes = false;
     xmlDocPtr doc = xmlParseDoc(BAD_CAST xmlBuf);
     if (doc) {
@@ -214,16 +214,10 @@ bool parse_request_xml(const char * xmlBuf, string & name, string & password) {
     return bRes;
 }
 
-bool Servlet(SSL *ssl) /* Serve the connection -- threadable */
+static bool Servlet(SSL *ssl) /* Serve the connection -- threadable */
 {
     char buf[1024] = {0};
     int sd, bytes;
-//    const char *ServerResponse =                            \
-//            "<Body>\n"                                      \
-//            "\t<Name>C/C++ Experience</Name>\n"             \
-//            "\t<year>15</year>\n"                           \
-//            "\t<at>Sigma Designs</at>\n"                    \
-//            "</Body>\n";
 
     if (SSL_accept(ssl) == FAIL)     /* do SSL-protocol accept */
         ERR_print_errors_fp(stderr);
@@ -236,19 +230,11 @@ bool Servlet(SSL *ssl) /* Serve the connection -- threadable */
             string user, pw, resp;
 
             if (parse_request_xml(buf, user, pw)) {
-#if 1
                 if (get_response_for_user(db_path, user, pw, resp)) {
-                    SSL_write(ssl, resp.c_str(), resp.length());
+                    SSL_write(ssl, resp.c_str(), static_cast<int>(resp.length()));
                 } else {
                     SSL_write(ssl, "Invalid password", static_cast<int>(strlen("Invalid password")));
                 }
-#else
-                if (pw == "secret") {
-                    SSL_write(ssl, ServerResponse, static_cast<int>(strlen(ServerResponse))); /* send reply */
-                } else {
-                    SSL_write(ssl, "Invalid password", static_cast<int>(strlen("Invalid password")));
-                }
-#endif
             } else {
                 SSL_write(ssl, "Invalid Message", static_cast<int>(strlen("Invalid Message"))); /* send reply */
             }
@@ -263,7 +249,6 @@ bool Servlet(SSL *ssl) /* Serve the connection -- threadable */
     return true;
 }
 
-const char * cert_path = "../../../ssl_certs/mycert.pem";
 
 int main(int argc, char *argv[]) {
     SSL_CTX *ctx = nullptr;
@@ -280,17 +265,18 @@ int main(int argc, char *argv[]) {
         printf("Usage: %s <portnum>\n", argv[0]);
         exit(0);
     }
-// Initialize the SSL library
+
+    // Initialize the SSL library
     SSL_library_init();
     portnum = argv[1];
     ctx = InitServerCTX();                          /* initialize SSL */
-    LoadCertificates(ctx, cert_path, cert_path);    /* load certs */
+    LoadCertificates(ctx, cert_path.c_str(), cert_path.c_str());    /* load certs */
     server = OpenListener(std::stoi(portnum));      /* create server socket */
 
     bool bRunning = true;
 
     while (bRunning) {
-        struct sockaddr_in addr;
+        struct sockaddr_in addr = {0};
         socklen_t len = sizeof(addr);
         SSL *ssl;
         int client = accept(server, (struct sockaddr *) &addr, &len);  /* accept connection as usual */

@@ -31,7 +31,7 @@ int OpenConnection(const string & hostname, int port) {
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = *(long *) (host->h_addr);
+    addr.sin_addr.s_addr = *((in_addr_t  *)host->h_addr);
 
     if (connect(sd, (struct sockaddr *) &addr, sizeof(addr)) != 0) {
         close(sd);
