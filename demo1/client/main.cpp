@@ -118,12 +118,12 @@ int main(int argc, char *argv[]) {
         getline(cin, password);
 
         sprintf(acClientRequest, cpRequestMessage, username.c_str(), password.c_str());   /* construct reply */
-        printf("\n\nConnected with %s encryption\n", SSL_get_cipher(ssl));
+        printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
         ShowCerts(ssl);        /* get any certs */
         SSL_write(ssl, acClientRequest, (int)strlen(acClientRequest));   /* encrypt & send message */
         bytes = SSL_read(ssl, buf, sizeof(buf)); /* get reply & decrypt */
         buf[bytes] = 0;
-        printf("Received: \"%s\"\n", buf);
+        printf("Received: \n%s\n", buf);
         SSL_free(ssl);          /* release connection state */
     }
     close(server);              /* close socket */

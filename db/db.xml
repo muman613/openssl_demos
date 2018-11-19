@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<data>
+    <user>
+        <name>Michael</name>
+        <password>secret1234</password>
+        <response>
+<reply>
+    <code>0x12341234</code>
+    <offset>0xfeedb00b</offset>
+</reply>
+        </response>
+    </user>
+    <user>
+        <name>James</name>
+        <password>quiet931</password>
+        <response>
+<reply>
+    <code>0xeeeff00f</code>
+    <offset>0xfeedb00b</offset>
+</reply>
+        </response>
+    </user>
+</data>

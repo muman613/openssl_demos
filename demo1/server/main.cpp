@@ -17,7 +17,81 @@
 
 using namespace std;
 
-// Create the SSL socket and intialize the socket address structure
+
+const string db_path = "../../../db/db.xml";
+
+
+/**
+ * Retrieve <response> child node text content for username/password pair.
+ *
+ * @param doc
+ * @param root
+ * @param name
+ * @param pass
+ * @param response
+ * @return
+ */
+static bool get_response_from_xml(xmlDocPtr doc, xmlNodePtr root, const string & name,
+                                  const string & pass, string & response)
+{
+    xmlNodePtr thisNode = root->children;
+
+    while (thisNode) {
+        if ((thisNode->type == XML_ELEMENT_NODE) && (xmlStrcasecmp(thisNode->name, BAD_CAST "user") == 0)) {
+            string user_name, user_password;
+            xmlNodePtr response_node = nullptr;
+
+            xmlNodePtr subNode = thisNode->children;
+
+            while (subNode) {
+                if (subNode->type == XML_ELEMENT_NODE) {
+                    if (xmlStrcasecmp(subNode->name, BAD_CAST "name") == 0) {
+                        user_name = (const char *)xmlNodeGetContent(subNode->children);
+                    } else if (xmlStrcasecmp(subNode->name, BAD_CAST "password") == 0) {
+                        user_password = (const char *)xmlNodeGetContent(subNode->children);
+                    } else if (xmlStrcasecmp(subNode->name, BAD_CAST "response") == 0) {
+                        response_node = subNode->children->next;
+                    } else {
+                        break;
+                    }
+                }
+
+                subNode = subNode->next;
+            }
+
+            if ((user_name == name) && (user_password == pass) && (response_node != nullptr)) {
+                xmlBufferPtr buf = xmlBufferCreate();
+
+                if (xmlNodeDump(buf, doc, response_node, 4, 1) != -1) {
+                    response = (const char *) buf->content;
+                    return true;
+                }
+            }
+        }
+
+        thisNode = thisNode->next;
+    }
+}
+
+static bool get_response_for_user(const string & dbpath, const string & user, const string & pass, string & resp) {
+    xmlDocPtr doc = nullptr;
+
+    doc = xmlParseFile(dbpath.c_str());
+    if (doc) {
+        xmlNodePtr rootNode = xmlDocGetRootElement(doc);
+        if (rootNode) {
+            return get_response_from_xml(doc, rootNode, user, pass, resp);
+        } else {
+
+        }
+    } else {
+
+    }
+
+    return false;
+}
+
+// Create the SSL socket and initialize the socket address structure
 int OpenListener(int port) {
     int sd = -1;
     struct sockaddr_in addr = {0};
@@ -144,12 +218,12 @@ bool Servlet(SSL *ssl) /* Serve the connection -- threadable */
 {
     char buf[1024] = {0};
     int sd, bytes;
-    const char *ServerResponse =                            \
-            "<Body>\n"                                      \
-            "\t<Name>C/C++ Experience</Name>\n"             \
-            "\t<year>15</year>\n"                           \
-            "\t<at>Sigma Designs</at>\n"                    \
-            "</Body>\n";
+//    const char *ServerResponse =                            \
+//            "<Body>\n"                                      \
+//            "\t<Name>C/C++ Experience</Name>\n"             \
+//            "\t<year>15</year>\n"                           \
+//            "\t<at>Sigma Designs</at>\n"                    \
+//            "</Body>\n";
 
     if (SSL_accept(ssl) == FAIL)     /* do SSL-protocol accept */
         ERR_print_errors_fp(stderr);
@@ -159,14 +233,22 @@ bool Servlet(SSL *ssl) /* Serve the connection -- threadable */
         buf[bytes] = '\0';
         printf("Client msg: \"%s\"\n", buf);
         if (bytes > 0) {
-            string user, pw;
+            string user, pw, resp;
 
             if (parse_request_xml(buf, user, pw)) {
+#if 1
+                if (get_response_for_user(db_path, user, pw, resp)) {
+                    SSL_write(ssl, resp.c_str(), resp.length());
+                } else {
+                    SSL_write(ssl, "Invalid password", static_cast<int>(strlen("Invalid password")));
+                }
+#else
                 if (pw == "secret") {
                     SSL_write(ssl, ServerResponse, static_cast<int>(strlen(ServerResponse))); /* send reply */
                 } else {
                     SSL_write(ssl, "Invalid password", static_cast<int>(strlen("Invalid password")));
                 }
+#endif
             } else {
                 SSL_write(ssl, "Invalid Message", static_cast<int>(strlen("Invalid Message"))); /* send reply */
             }
