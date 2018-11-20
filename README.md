@@ -38,6 +38,15 @@ Start the client as follows:
     cd cmake-build-debug/demo1/client
     ./demo1_client localhost 5000
 
+### Unit test
+
+A Python unit test is provided which launches the SSL server in the Test Cases `setUp` function and kills it when the `tearDown` of the test case happens. The single test runs the SSL client and sends a user/password pair and the returned result is evaluated for success or failure.
+
+To run the test
+
+    cd test
+    ./run_unit_test.sh
+
 ## Monitor Packet Traffic w/tcpdump
 
 To make sure that the network traffic is really encrypted by the SSL library you can run the `tcpdump` command to monitor all traffic on port `5000` of the `lo` interface by issuing the following command: 

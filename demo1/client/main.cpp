@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
     server = OpenConnection(hostname, std::stoi(portnum));
     ssl = SSL_new(ctx);             /* create new SSL connection state */
     SSL_set_fd(ssl, server);        /* attach the socket descriptor */
+
     if (SSL_connect(ssl) == FAIL) { /* perform the connection */
         ERR_print_errors_fp(stderr);
     } else {
@@ -124,9 +125,11 @@ int main(int argc, char *argv[]) {
         bytes = SSL_read(ssl, buf, sizeof(buf)); /* get reply & decrypt */
         buf[bytes] = 0;
         printf("Received: \n%s\n", buf);
-        SSL_free(ssl);          /* release connection state */
     }
     close(server);              /* close socket */
+
+    SSL_free(ssl);          /* release connection state */
     SSL_CTX_free(ctx);          /* release context */
+
     return 0;
 }
